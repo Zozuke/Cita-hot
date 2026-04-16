@@ -98,8 +98,8 @@ button {
 <div class="container">
 
   <div id="login">
-    <input id="nombreInput" placeholder="Tu nombre">
-    <button onclick="guardarNombre()">Entrar</button>
+    <input id="nombreInput" type="text" placeholder="Tu nombre">
+    <button type="button" onclick="guardarNombre()">Entrar</button>
   </div>
 
   <div id="chat" style="display:none; flex-direction: column; height:100%;">
@@ -108,8 +108,8 @@ button {
     <div class="chat-box" id="lista"></div>
 
     <div class="input-box">
-      <input id="mensajeInput" placeholder="Escribe mensaje">
-      <button onclick="enviar()">➤</button>
+      <input id="mensajeInput" type="text" placeholder="Escribe mensaje">
+      <button type="button" onclick="enviar()">➤</button>
     </div>
   </div>
 
@@ -118,24 +118,26 @@ button {
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
 
 <script>
-const supabase = supabase.createClient(
+// Inicializar cliente correctamente
+const client = supabase.createClient(
   "https://kjbesbtvgmtuffgmzaaw.supabase.co",
   "sb_publishable_xbe-EzT66Ww36li0dM9iVw_5zHWyBTZ"
 );
 
 let nombreUsuario = localStorage.getItem("nombre");
 
-if(nombreUsuario){
+if (nombreUsuario) {
   iniciarChat();
 }
 
-function guardarNombre(){
-  const nombre = document.getElementById("nombreInput").value;
+function guardarNombre() {
+  const nombre = document.getElementById("nombreInput").value.trim();
+  if (!nombre) return;
   localStorage.setItem("nombre", nombre);
   iniciarChat();
 }
 
-function iniciarChat(){
+function iniciarChat() {
   nombreUsuario = localStorage.getItem("nombre");
 
   document.getElementById("login").style.display = "none";
@@ -145,12 +147,11 @@ function iniciarChat(){
   cargar();
 }
 
-async function enviar(){
-  const mensaje = document.getElementById("mensajeInput").value;
+async function enviar() {
+  const mensaje = document.getElementById("mensajeInput").value.trim();
+  if (!mensaje) return;
 
-  if(!mensaje) return;
-
-  await supabase.from("chat").insert([
+  await client.from("chat").insert([
     { nombre: nombreUsuario, mensaje: mensaje }
   ]);
 
@@ -158,32 +159,40 @@ async function enviar(){
   cargar();
 }
 
-async function cargar(){
-  const { data } = await supabase
+async function cargar() {
+  const { data, error } = await client
     .from("chat")
     .select("*")
     .order("id", { ascending: true });
 
+  if (error) {
+    console.error("Error al cargar mensajes:", error);
+    return;
+  }
+
   const lista = document.getElementById("lista");
   lista.innerHTML = "";
 
-  data.forEach(d => {
-    const div = document.createElement("div");
-    div.classList.add("msg");
+  if (data) {
+    data.forEach(d => {
+      const div = document.createElement("div");
+      div.classList.add("msg");
 
-    if(d.nombre === nombreUsuario){
-      div.classList.add("mio");
-    } else {
-      div.classList.add("otros");
-    }
+      if (d.nombre === nombreUsuario) {
+        div.classList.add("mio");
+      } else {
+        div.classList.add("otros");
+      }
 
-    div.textContent = d.nombre + ": " + d.mensaje;
-    lista.appendChild(div);
-  });
+      div.textContent = d.nombre + ": " + d.mensaje;
+      lista.appendChild(div);
+    });
+  }
 
   lista.scrollTop = lista.scrollHeight;
 }
 
+// Recargar cada 2 segundos
 setInterval(cargar, 2000);
 </script>
 
